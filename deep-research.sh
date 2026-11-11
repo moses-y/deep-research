@@ -143,10 +143,24 @@ Question: {QUESTION}
 Provide a unified, high-quality answer that captures the best of each response.'
 
 # Get next agent number
+# Children run in parallel, so the read-increment-write must be exclusive:
+# without the lock two children take the same number and one agent file
+# overwrites the other. mkdir is atomic, so it serves as the lock.
 get_next_num() {
+    local lock="$OUTPUT_DIR/.counter.lock"
+    local tries=0
+    until mkdir "$lock" 2>/dev/null; do
+        tries=$((tries + 1))
+        if [ "$tries" -gt 3000 ]; then
+            echo "get_next_num: could not take $lock" >&2
+            return 1
+        fi
+        sleep 0.01
+    done
     local num=$(cat "$OUTPUT_DIR/.counter")
     num=$((num + 1))
     echo "$num" > "$OUTPUT_DIR/.counter"
+    rmdir "$lock"
     printf "%03d" $num
 }
 

@@ -90,6 +90,10 @@ class ClaudeProvider(Provider):
             "1",
             "--tools",
             "",  # Disable all tools
+            # Do not inherit the user's own settings, hooks or instruction file: a research
+            # call should see the question and its system prompt, nothing else. The login is kept.
+            "--setting-sources",
+            "project",
         ]
 
         # Handle system prompt - always use file to avoid quoting issues

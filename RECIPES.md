@@ -25,8 +25,10 @@
 15. [Part XIV: Branch Exhaustion Recipes](#part-xiv-branch-exhaustion-recipes) - Knowing when to continue vs move on (132-139)
 16. [Part XV: Multi-Perspective Synthesis Recipes](#part-xv-multi-perspective-synthesis-recipes) - When and how to combine viewpoints (140-148)
 17. [Part XVI: Blind Spot Detection Recipes](#part-xvi-blind-spot-detection-recipes) - Revealing what you're not seeing (149-156)
-18. [The Recursive Flywheel](#the-recursive-flywheel) - Self-improving knowledge
-19. [Key Insights](#key-insights) - The sauce that makes it work
+18. [Part XVII: Proving Recipes](#part-xvii-proving-recipes) - Recipes that test recipes (157-163)
+19. [Part XVIII: The Surprise Law](#part-xviii-the-surprise-law) - One law at three scales: what did I fail to predict? (164-171)
+20. [The Recursive Flywheel](#the-recursive-flywheel) - Self-improving knowledge
+21. [Key Insights](#key-insights) - The sauce that makes it work
 
 ---
 
@@ -4678,6 +4680,546 @@ Build systems, relationships, and habits that surface what individual reflection
 
 ---
 
+## Part XVII: Proving Recipes
+*Recipes that test recipes (157-163)*
+
+*Added Nov 2026 from a review of this book. Every recipe above is a claim: "this beats asking one strong model once." None of them had been checked against that. These seven are how to check, and how to let the book shrink. They are themselves untested here; 157 applies to them first.*
+
+---
+
+### 157. Baseline Duel
+
+**The Pattern:**
+Before trusting a recipe, run it against the plainest alternative: one strong model, asked the question once.
+
+**How It Works:**
+```
+1. Pick questions where a good answer can be recognised
+   (known answers, or facts an expert would insist on)
+2. Write the winning rule BEFORE any run
+   ("recipe wins if it contains more of the insisted-on facts
+     at equal or lower error count")
+3. Run recipe and baseline on the same questions
+4. Judge blind: the judge does not know which output is which
+5. Record: WON / TIED / LOST, on which kind of question
+```
+
+**When It Shines:**
+- Before adding a recipe to a pipeline
+- When a recipe "feels" better (longer output reads as better output)
+- Whenever a tree costs 50 calls and the baseline costs 1
+
+**The Risk:**
+A judge rewards length and structure. A 69-leaf synthesis looks more thorough than one answer even when it says less. The rule must count content, not volume.
+
+**The Sauce:**
+A tie is a loss. If the recipe cannot beat one plain ask, the extra calls bought nothing. Most of the value of this recipe is in the ties it exposes.
+
+---
+
+### 158. Recipe Ledger
+
+**The Pattern:**
+Treat the recipe book as a research tree. Each recipe is a claim with an epistemic status, exactly like a node in the graph.
+
+**How It Works:**
+```
+(format only: these rows are invented, no recipe here has been tested)
+
+Recipe      Status     Evidence
+Recipe A    UNTESTED   -
+Recipe B    WON        6 of 8 practical questions, vs baseline
+Recipe C    TIED       no gain on 10 questions
+Recipe D    LOST       same content as the cheaper variant, 10x the calls
+```
+- Every recipe starts UNTESTED
+- Only a Baseline Duel (157) moves it
+- Recipe Selection (53) reads the ledger: prefer WON for this question type, never pick LOST
+- Failures are logged like successes
+
+**When It Shines:**
+- Any time the book is consulted to choose a recipe
+- When two recipes overlap and one must go
+
+**The Risk:**
+A result on one kind of question gets read as general. Record the question type with every row.
+
+**The Sauce:**
+The tool already tracks whether a *finding* is proposed, validated or refuted. It never asked the same of its own methods. A recipe book without statuses is a list of proposals.
+
+---
+
+### 159. Subtraction Test
+
+**The Pattern:**
+Remove one phase from a multi-phase recipe and run it again. If a blind judge cannot tell the difference, delete the phase.
+
+**How It Works:**
+```
+Full:     Decompose → Explore → Critique → Connect → Synthesize → Audit
+Minus 1:  Decompose → Explore →            Connect → Synthesize → Audit
+
+Same questions, blind comparison:
+  Judge prefers Full      → Critique earns its place
+  Judge cannot tell       → Critique is removed
+```
+
+**When It Shines:**
+- Engines with many phases (Emergence has ten)
+- After a recipe has grown by additions
+- When cost matters and nobody knows which phase is paying
+
+**The Risk:**
+A phase may matter only on hard questions. Include some.
+
+**The Sauce:**
+Recipes grow by addition because adding a phase never visibly hurts. Subtraction is the only test that can make a recipe smaller. Run it on the winner, not just on the loser.
+
+---
+
+### 160. Planted Key Audit
+
+**The Pattern:**
+Test the pipeline, not the answer. Plant something you know in the inputs and see what comes out the other end.
+
+**How It Works:**
+```
+Plant A: one true, rare, important fact in a single leaf's material
+Plant B: one plausible false claim in another leaf's material
+
+After synthesis:
+  A present?  → the tree carries rare findings upward
+  A missing?  → synthesis drops what only one branch saw
+  B repeated? → the tree is gullible
+  B flagged?  → validation works
+```
+
+**When It Shines:**
+- Judging a synthesis method when the true answer is unknown
+- Comparing mergers (which one keeps the single-source fact?)
+- Checking that a validation phase can actually fail something
+
+**The Risk:**
+A plant that is too obvious tests nothing. It should look like every other leaf finding.
+
+**The Sauce:**
+You cannot measure what a synthesis lost if you do not know what went in. Planting is the cheapest way to know. It also answers the question no quality rating can: would this pipeline have told me if it were wrong?
+
+---
+
+### 161. Synthesis Residue
+
+**The Pattern:**
+After synthesis, list what the leaves found that the synthesis did not keep. Read that list.
+
+**How It Works:**
+```
+1. Extract the distinct claims from all leaf answers
+2. Extract the distinct claims from the synthesis
+3. Residue = in the leaves, absent from the synthesis
+4. For each residue item ask:
+     noise or duplication?       → drop
+     true but only one branch saw it?  → this is the candidate insight
+     contradicts the synthesis?  → the synthesis must answer it
+```
+
+**When It Shines:**
+- Wide trees, where synthesis must discard most of what it reads
+- When the synthesis sounds like what you already believed
+- As the input to a second synthesis pass
+
+**The Risk:**
+The residue is mostly noise. The yield is a handful of items from hundreds.
+
+**The Sauce:**
+Synthesis keeps what many branches repeat and drops what one branch found. That is regression to consensus. The answer to "What am I not seeing?" is, by construction, more likely to be in the residue than in the synthesis.
+
+---
+
+### 162. Twin Run
+
+**The Pattern:**
+Run the whole recipe twice from the same question with no shared context. Compare the two results.
+
+**How It Works:**
+```
+Run 1: own decomposition → own tree → synthesis 1
+Run 2: own decomposition → own tree → synthesis 2
+
+Agreement     → stable; a third run would say the same
+Disagreement  → the map of where to spend depth
+Only-in-one   → depends on the decomposition, not on the question
+```
+
+**When It Shines:**
+- Before acting on a conclusion
+- To find where more depth is worth paying for (instead of uniform depth)
+- To measure a recipe's noise before comparing it to anything
+
+**The Risk:**
+Twins from the same model share the same blind spots. Agreement proves stability, not truth.
+
+**The Sauce:**
+Different from Confidence-Variance Targeting (67), which compares sources inside one tree. Here the tree itself is the variable. If twins disagree widely, no single run of that recipe should be trusted, and no Baseline Duel on it means anything until they agree.
+
+---
+
+### 163. Decisive Branch First
+
+**The Pattern:**
+Before exploring a branch, ask what its answer could change. Explore first the branches whose answer would flip the conclusion. Skip the ones where every possible answer leaves it the same.
+
+**How It Works:**
+```
+For each sub-question, before spawning:
+  "If this came back A, what would we conclude?"
+  "If it came back B, what would we conclude?"
+
+  Same conclusion either way  → do not spawn
+  Different conclusions       → spawn, and spawn it first
+  Cheap and decisive          → before anything expensive
+```
+
+**When It Shines:**
+- Decisions (the output is a choice, not a survey)
+- When a decomposition returns dozens of angles
+- Any run with a budget
+
+**The Risk:**
+Prunes the branch that would have reframed the question. Keep a small quota for branches that are not decisive but are strange.
+
+**The Sauce:**
+Angle Explosion asks "what is worth exploring?" and everything is worth exploring. This asks "what would change my mind?" and most things would not. It turns a fan-out cap from an arbitrary number into a ranking.
+
+---
+
+### The Proving Loop
+
+The seven compose into one loop for the book itself:
+
+```
+Twin Run (162)         is the recipe stable enough to test?
+    ↓
+Baseline Duel (157)    does it beat one plain ask?
+    ↓
+Planted Key (160)      does it keep rare truths and catch false ones?
+    ↓
+Subtraction (159)      which phases can go?
+    ↓
+Recipe Ledger (158)    record WON / TIED / LOST by question type
+    ↓
+Selection (53) reads the ledger
+```
+
+A book that only grows is collecting, not learning. This loop is how it gets shorter.
+
+---
+
+## Part XVIII: The Surprise Law
+*One law, applied at three scales (164-171)*
+
+*Added Nov 2026. Untested: derived by reasoning, plus one measurement taken from this project's own past runs (see 168). Baseline Duel (157) applies to all of it. The part ends with what would refute it.*
+
+### The Law
+
+"What am I not seeing?" has a measurable form:
+
+**What did I fail to predict?**
+
+- If you can predict what a branch will say, the branch tells you nothing.
+- If you cannot, the answer is either something you were not seeing or an error. Only a check against something outside the model tells which.
+
+A research tree rearranges what its model already believes. Focused questions do surface more of that than one prompt can, and that is worth something. But new information enters only where a prediction fails and the failure is checked. The eight recipes below steer the budget toward those places and away from paraphrase.
+
+The same law applies at three scales: a node (164), a whole run (165), and this book (171).
+
+If only one recipe from this part is kept, keep 164.
+
+---
+
+### 164. Predict Before You Look
+
+**The Pattern:**
+Before a child runs, the parent writes one line: what it expects the child to say. Afterwards, compare. Spend only where the expectation failed.
+
+**How It Works:**
+```
+The decomposition emits pairs:
+
+  Q: Why did the company fail?
+  E: It expanded to many cities before the unit economics worked.
+
+After the child answers:
+
+  As expected       → nothing learned. Do not expand. Pass nothing up.
+  Differs           → candidate finding. Check it (167).
+                      If it survives, expand under it.
+  "E: unknown"      → explore, if the answer matters (166)
+```
+
+**The New Base Case:**
+The core rule says each node decides: expand or answer. The first version of this tool gave the node that decision, and in one stored example it chose five children. The Python path does not ask: depth decides, and the explore prompt says "be thorough", so a node above leaf depth always expands. Restoring the node's decision comes first. This recipe gives the decision a test:
+
+A question is atomic when its parent can predict the answer.
+
+**Cost:**
+No extra calls. The expectation is written in the same call that writes the question.
+
+**The Risk:**
+- A vague expectation cannot fail ("it depends on several factors"). Apply the Falsifiability Test (116) to the expectation itself. If no answer could contradict it, count it as "unknown".
+- A surprising answer may be an error. Surprise selects what to check. It is not evidence.
+
+**The Sauce:**
+Novelty-Gated (21) and the Surprise Rate (Part XIV) judge surprise after reading the answer, when everything looks either obvious or new. Writing the expectation first turns the judgement into a measurement. When one model writes both the expectation and the answer, with no tools, a match is the model agreeing with itself. The law predicts this is the common case, and that is the point: it shows which calls were paraphrase.
+
+---
+
+### 165. Answer First, Research the Doubt
+
+**The Pattern:**
+Start with the best single-call answer. Then decompose the doubt about that answer, not the topic.
+
+**How It Works:**
+```
+1. One strong call: the answer, a confidence,
+   and "I would be wrong if..." (three to seven conditions)
+2. Lock it. This is the prior.
+3. The "wrong if" conditions are the sub-questions.
+4. Research those.
+5. Report:
+     what changed
+     what was confirmed by a check
+     what is still unknown
+   If nothing changed, say so and return the first answer.
+```
+
+**When It Shines:**
+- An answer is wanted, not a survey
+- Any run with a budget
+- When Angle Explosion (1) returns dozens of angles
+
+**The Risk:**
+Anchoring. The first answer frames what counts as doubt, and a wrong frame survives its own doubts. Give one "wrong if" slot to "the question itself is wrong" (Socratic). Where possible, have a different model family write the doubts than wrote the answer. Keep the locked answer from the children: send each doubt as a neutral question, or the leaves will argue for or against the answer they were shown.
+
+**The Sauce:**
+A topic has unlimited angles: one run of Angle Explosion returned 69. An answer has a handful of ways to be wrong. Decomposing the doubt limits the fan-out without a cap. The locked first answer is also the baseline for the Baseline Duel (157), free on every run. The report is the difference between the two, and "the first answer stands" is a legitimate, cheap result.
+
+---
+
+### 166. The Two-Question Gate
+
+**The Pattern:**
+Ask two things of every branch before spawning it. Can I predict its answer? Would its answer change the conclusion?
+
+**How It Works:**
+```
+                   Would not change         Would change
+                   the conclusion           the conclusion
+
+Can predict        NOISE      → skip        ASSUMPTION → verify
+
+Cannot predict     TRIVIA     → park        OPEN CRUX  → explore
+```
+
+| Quadrant | What it is | What to do |
+|----------|------------|------------|
+| **Noise** | Most of a wide tree | Skip |
+| **Trivia** | Interesting, changes nothing. Reads as insight, so it attracts the most spending | Park it and list it at the end |
+| **Assumption** | You are sure, and the conclusion rests on it | Check it against an exit (167). Cheap, and the highest risk |
+| **Open crux** | Unknown, and it decides the answer | The only place exploration earns its cost |
+
+**The Risk:**
+Both answers are the model's guesses about itself, and it will misjudge. Run a small sample of NOISE branches anyway and see whether they stay noise.
+
+**The Sauce:**
+This adds a second axis to Decisive Branch First (163). The quadrant that matters most is the one a tree skips by construction: predictable and decisive. A tree never examines what its model "already knows". The book's own insight, "the most dangerous perspective is the one you don't know you have", describes that quadrant. The four outcomes map onto operations the framework already has: skip, DORMANT, GROUND, DECOMPOSE.
+
+---
+
+### 167. Three Exits
+
+**The Pattern:**
+Information enters a tree only where a node reaches outside the model that is running it. Label every leaf by its exit.
+
+**How It Works:**
+```
+RECALL   the model answers from what it holds                 no exit
+LOOK     search, read a source, query data, run code,
+         run an experiment
+OTHER    a different model family, or a person
+DERIVE   work out a consequence: calculate, simulate,
+         check two claims against each other
+```
+- Label each leaf and count the labels
+- A surprise (164) or an assumption (166) is settled only by LOOK, OTHER or DERIVE
+- A RECALL leaf confirming a RECALL parent counts as nothing
+- The same model under a different role prompt is still RECALL. Independence Verification (144) gives the levels.
+
+**When It Shines:**
+- Deciding where web search or code execution is worth its cost
+- Reading a finished run: how much of it left the model at all?
+- Before trusting convergence (51) or a vote (34)
+
+**The Risk:**
+- An exit gives independence, not truth. A search brings in wrong sources. A second model family shares much of its training with the first.
+- Access is not contact. An agent that may look often does not look at the right thing. Handing a leaf the relevant material (the failing check, the source passage) can beat letting it explore. A first check of this recipe against a set of recorded comparisons did not support "the arm with tool access wins": count an exit only when the outside material actually reached the answer.
+
+**The Sauce:**
+A tree of RECALL leaves is one model read slowly. That has value, and it should be priced as one source. Grounding every leaf is expensive and mostly confirms what was predictable. Grounding only the surprises and the assumptions is cheap, and it is where a check can change the result.
+
+---
+
+### 168. Delta Synthesis
+
+**The Pattern:**
+Each level passes up what it did not expect, with the check that confirmed it. It does not pass up a summary of what it found.
+
+**The Measurement:**
+From seven of this project's past runs (different questions and models), the size of the deepest-level agent outputs against the size of the final synthesis:
+
+```
+Leaves    Leaf output    Final synthesis
+   15         53 KB            6 KB
+   23         84 KB           15 KB
+   33        130 KB           13 KB
+   47        189 KB           11 KB
+  105        435 KB           24 KB
+  142        515 KB           10 KB
+  295      1,723 KB           17 KB
+```
+
+From 23 leaves to 295, leaf output grew twenty-fold and the synthesis stayed between 10 and 24 KB. The final report is one model response. Its size is fixed and the tree's is not. Bytes are not information; the table shows only that the channel does not widen.
+
+**How It Works:**
+```
+Each child returns:
+
+  EXPECTED:    ...
+  FOUND:       ...
+  CHECKED BY:  ... (or "unchecked")
+
+The parent passes up only the rows where FOUND differs from EXPECTED,
+plus one line: "N branches were as expected."
+```
+
+**Standing Decision:**
+This project decided in December 2025 that the full research is the default output and summarising is opt-in, after one synthesis kept 300 lines of 4,000. The Python path follows that: it writes no separate synthesis. Delta Synthesis does not replace that default. It is a candidate for the opt-in summary, and for the paths that still synthesise.
+
+**The Risk:**
+A confirmation can matter. Keep confirmations of ASSUMPTION branches (166) that were checked by an exit: "we checked, and it holds" is a finding.
+
+**The Sauce:**
+Ordinary synthesis keeps what many branches repeat and drops what one branch found (161). Delta Synthesis reverses the default. The repeated and expected is dropped by rule. The single unexpected finding is kept by rule. With a fixed channel, the only choice is what to send through it.
+
+---
+
+### 169. Shape First
+
+**The Pattern:**
+A tree is the right structure for one kind of problem. Identify the kind before choosing a recipe.
+
+**How It Works:**
+
+| Kind | Structure | Why |
+|------|-----------|-----|
+| **Survey** | Tree, in parallel | The parts are independent |
+| **Diagnosis** | Bisection, in sequence | Each probe should halve the remaining causes |
+| **Design** | Generate, test, select, repeat | Needs a test that scores candidates |
+| **Decision** | Cruxes (165, 166) | Only what flips the choice matters |
+| **Forecast** | Reference classes, then adjust | Base rates before specifics |
+
+```
+The test between any two sub-questions:
+  "Would knowing A's answer change what I ask in B?"
+     No  → run them in parallel
+     Yes → run A first
+```
+
+**The Risk:**
+Real problems mix kinds. Choose per sub-problem, not once per run.
+
+**The Sauce:**
+Parallelize independence, sequence dependence. Coupling Detection (92) treats dependence as a defect in a decomposition. Often it is the shape of the problem: in a diagnosis, the second question should not exist until the first is answered, and a parallel tree asks it blind. Recipe Selection (53) chooses how to split a tree. This chooses whether to build one.
+
+---
+
+### 170. Root Weight
+
+**The Pattern:**
+An error at a node is inherited by everything below it. Spend care in proportion to what hangs from the node.
+
+**How It Works:**
+- The decomposition (or the first answer and its doubts) decides the whole run, and it is sampled once. Sample it several times, along different axes or from different model families. Merge, rank, admit under a budget, then spawn. (De-duplicating by wording removes about 1% in this project's stored runs.)
+- Leaves get one cheap sample each. A wrong leaf is one voice among many.
+- The final synthesis is the other single point. Check it (160, 161).
+
+**The Risk:**
+Merging several decompositions rebuilds the 69-angle list. Merge first, then gate (166).
+
+**The Sauce:**
+A leaf ensemble pays several times over on every leaf, where errors are diluted. The root is sampled once, where errors multiply. The leverage runs the other way. *Measured Nov 2026 (one model, five questions): a second decomposition repeats about 78% of the first and adds about a fifth, so the gain from re-sampling the root is real and modest.* Twin Run (162) measures this variance; Root Weight spends against it.
+
+---
+
+### 171. The Learning Book
+
+**The Pattern:**
+On every run, log which recipe produced each branch and whether that branch yielded a checked, decisive surprise. The book's statuses then update from use.
+
+**How It Works:**
+```
+Per branch:   recipe that generated it | question type |
+              predicted? | decisive? | checked?
+
+Per recipe:   yield = checked decisive surprises / calls
+```
+- Recipes with no yield over many runs retire
+- High-yield branches that came from no named recipe are clustered and named. That is a new recipe, induced from the log
+- The Recipe Ledger (158) fills without a separate tournament
+
+**The Risk:**
+A system scored on surprise learns to surprise itself. Only checked surprises count, and the ledger is anchored now and then by a Baseline Duel (157) with an outside judge.
+
+**The Sauce:**
+This book says the flywheel is real. Yet nothing carries from one run to the next except prose written afterwards, and Parts IX-XVI were each written from a single run. With a yield log the book becomes the tool's record of where surprise was found, and it can get shorter as well as longer.
+
+---
+
+### The Surprise Engine
+
+The eight compose into one flow:
+
+```
+ANSWER FIRST (165)   one strong answer, locked, with its "wrong if" list
+      ↓
+ROOT WEIGHT (170)    sample the doubt list more than once; merge
+      ↓
+GATE (166)           skip noise · park trivia · verify assumptions · explore cruxes
+      ↓
+SHAPE (169)          independent in parallel, dependent in sequence
+      ↓
+PREDICT (164)        write the expected result before each look
+      ↓
+EXIT (167)           look, ask another mind, or derive
+      ↓
+DELTA UP (168)       pass up only what was not expected, with its check
+      ↓
+REPORT               first answer + what changed + what is still unknown
+      ↓
+LEARN (171)          log yield per recipe
+```
+
+### What Would Refute This
+
+The law makes predictions. If they fail, drop the part.
+
+1. **In a single-model tree with no exits, most leaf answers match a one-line expectation written beforehand.** This can be tested without new runs: take a past run, give a model only the `Q:` lines, have it write expectations, and compare them with the stored leaf answers. If expectations fail often and the failures hold up when checked, trees produce more than this part says.
+2. **A panel drawn from one model ties one strong ask.** Mixing model families or adding an exit moves the result. *First check, Nov 2026, on a set of recorded comparisons (one blind tagger, weak evidence): extra samples of one family failed to win in about two thirds of contrasts, as predicted in direction, but the arm with access to look won only about half the time. The "adding an exit" half is unsupported as written; see the second risk under 167.*
+3. **Decomposing the doubt spawns far fewer children than decomposing the topic**, at an equal or better Baseline Duel result.
+4. **Delta Synthesis carries a planted single-branch fact (160) to the final report more often than ordinary synthesis.**
+
+---
+
 ## Key Insights
 
 ### From the Research
@@ -4714,7 +5256,14 @@ Build systems, relationships, and habits that surface what individual reflection
 
 2. **Depth 2 is usually enough.** Depth 3 creates massive trees (325 agents). Only for comprehensive coverage.
 
-3. **~20% of children can fail.** Empty answers happen. Strengthening pass catches these.
+3. **~20% of children can fail.** Empty answers happen. Strengthening pass catches these. *Measured Nov 2026 on the 27 stored runs: the answers that failed were empty ones recorded as complete: 112 of the 1,202 surviving leaf files, 120 of the 121 empty or near-empty ones from one model (16% of its leaves), in streaks that fit provider throttling. A second fault looked like dropped children and was not: the bash script hands out agent numbers from an unlocked counter, so parallel children overwrote about 185 agent files while their answers still reached the parents.*
+
+3c. **Three small tests, Nov 2026 (rules written before the runs; counts and blind preferences, not answer quality).**
+- *Giving the node the decision cuts fan-out.* Ten questions, one model: the current "be thorough" prompt proposed a median of 27 sub-questions, the same prompt with an answer-or-split decision 13, and without the thoroughness sentence 10.5. The current prompt proposed 12 sub-questions for "What is the capital of Australia?".
+- *Siblings do not repeat each other in meaning either.* A calibrated judge marked 0 of 607 sub-questions as the same question as a sibling. Between two decompositions of the same question, 78% of one's sub-questions recur in the other: a second draw adds about a fifth.
+- *Stored merges were preferred to the strongest single answer* in 13 of 13 blind pairs, both orders. Two questions, one judge family, and the merge had usually seen its rival: weak evidence.
+
+3b. **Sibling questions rarely repeat each other in words.** *Measured Nov 2026: of 1,395 sibling questions, 18 (1.3%) share 40% or more of their content words with a sibling. De-duplicating by wording will not tame fan-out. An admission step has to rank and choose. (Same-meaning questions in different words are not counted by this measure.)*
 
 4. **Concurrency needs limits.** Unlimited parallel spawning hits rate limits. Default 10 is reasonable.
 

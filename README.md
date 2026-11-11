@@ -123,8 +123,8 @@ Behaviour can also be tuned through `DEEP_RESEARCH_*` variables — see
 
 ### Python CLI
 
-`deep-research` requires a subcommand. There are six: `research`,
-`perspectives`, `socratic`, `cache`, `config`, `validate`.
+`deep-research` requires a subcommand. There are seven: `research`,
+`perspectives`, `socratic`, `audit`, `cache`, `config`, `validate`.
 
 ```bash
 # Basic research (start shallow — see the cost warning above)
@@ -139,7 +139,15 @@ deep-research perspectives "What makes good leadership?"
 # Check what is configured and reachable
 deep-research config
 deep-research validate "Your question"
+
+# Audit a finished run from its agent files (no model call)
+deep-research audit reports/2025-12-17-your-question-slug
 ```
+
+`audit` reports what a run does not say about itself: sub-questions that were
+proposed and have no agent file, empty or very short answers, agents that did
+not finish, and the fan-out per node. `research` prints the same report when it
+ends. It exits 1 on any finding.
 
 ### Python API
 
@@ -177,7 +185,7 @@ from deep_research.core import grounded_research_strategy
 
 result = await chef.cook(
     "Current state of AI",
-    grounded_research_strategy(max_depth=1),
+    grounded_research_strategy(max_depth=2),
     context={"model": "haiku"},
 )
 ```
@@ -396,7 +404,7 @@ These are observations from the authors' own runs, not a benchmark.
 
 ## Related
 
-- **[RECIPES.md](RECIPES.md)** — 156 research patterns
+- **[RECIPES.md](RECIPES.md)** — 171 research patterns
 - **[docs/API.md](docs/API.md)** — Python API reference
 - **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Common problems
 - **[AgentsKB](https://agentskb.com)** — Pre-researched knowledge for AI agents

@@ -13,6 +13,7 @@ import sys
 from rich.console import Console
 
 from ..cache import get_cached, set_cached
+from ..exceptions import EmptyResponseError
 from .base import Provider, ProviderOptions
 
 _console = Console(stderr=True)
@@ -121,4 +122,8 @@ QUESTION:
                 continue
             output_lines.append(line)
 
-        return "\n".join(output_lines).strip()
+        text = "\n".join(output_lines).strip()
+        if not text:
+            # An empty answer is a failed call, not an answer (the Claude provider does the same).
+            raise EmptyResponseError("gemini", model, prompt)
+        return text

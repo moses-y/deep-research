@@ -101,8 +101,9 @@ async def test_full_research():
     # Use a simple question
     question = "What are the three primary colors?"
 
-    # Create a depth-1 strategy (just decompose and answer, no recursion)
-    strategy = recursive_research_strategy(max_depth=1, parallel=True)
+    # Decompose once and answer, no recursion. max_depth counts levels with the root as
+    # level 1, so this is 2 (it was written as 1 while the parameter was ignored).
+    strategy = recursive_research_strategy(max_depth=2, parallel=True)
 
     # Run the research
     result = await chef.cook(

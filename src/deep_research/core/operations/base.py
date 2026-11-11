@@ -46,10 +46,12 @@ def make_provider_options(
 def register_all_operations() -> None:
     """Register all concrete operations with the registry."""
     from .answer import AnswerOperation
+    from .challenge import ChallengeOperation
     from .decompose import DecomposeOperation
     from .detect import DetectOperation
     from .ground import GroundOperation
     from .synthesize import SynthesizeOperation
+    from .transform import TransformOperation
 
     registry = OperationRegistry.instance()
     registry.register(OperationType.DECOMPOSE, DecomposeOperation)
@@ -59,3 +61,5 @@ def register_all_operations() -> None:
     registry.register(OperationType.MERGE, SynthesizeOperation)  # Alias
     registry.register(OperationType.DETECT, DetectOperation)
     registry.register(OperationType.GROUND, GroundOperation)
+    registry.register(OperationType.CHALLENGE, ChallengeOperation)
+    registry.register(OperationType.TRANSFORM, TransformOperation)

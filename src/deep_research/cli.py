@@ -21,6 +21,7 @@ from typing import Optional
 import typer
 from rich.console import Console
 
+from .audit import audit_run, format_report
 from .cache import cache_stats, clear_cache
 from .exceptions import (
     APIKeyError,
@@ -295,6 +296,11 @@ def research(
         # Run the research
         orchestrator_instance = Orchestrator(config)
         asyncio.run(orchestrator_instance.run())
+
+        # Say what the run itself would not: empty answers, missing agent files, fan-out
+        console.print(
+            format_report(audit_run(orchestrator_instance.agents_dir.parent)), markup=False
+        )
 
     except ValidationError as e:
         handle_error(e)
@@ -673,6 +679,29 @@ def validate(
         raise typer.Exit(1)
 
     console.print("\n[green]All validations passed![/green]")
+
+
+@app.command()
+def audit(
+    run_dir: Path = typer.Argument(
+        ..., help="A finished run's folder (the one that holds agents/)"
+    ),
+    limit: int = typer.Option(10, "--limit", help="How many items to list per finding"),
+):
+    """
+    Audit a finished run from its agent files. No model call.
+
+    Reports sub-questions that were proposed and have no agent file, empty or
+    very short answers, agents that did not finish, and the fan-out per node.
+    Exits 1 when there is any finding or nothing to audit.
+
+    Example:
+        deep-research audit reports/2025-12-17-what-makes-a-startup-successful
+    """
+    report = audit_run(run_dir)
+    console.print(format_report(report, limit=limit), markup=False)
+    if not report.clean:
+        raise typer.Exit(1)
 
 
 def main():

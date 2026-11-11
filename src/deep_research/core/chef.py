@@ -426,12 +426,19 @@ class MasterChef:
         created_nodes: list[str] = []
 
         for target in targets:
-            # Create sub-question from target content
-            sub_result = await self.cook(
-                target.content,
-                sub_strategy,
-                {**context, "depth": target.depth + 1},
-            )
+            # cook() keeps its run state on the chef, so a sub-run would leave the parent's
+            # graph, strategy and stats replaced by its own. Put them back afterwards, so the
+            # synthesis below is added to the parent graph and the parent's run carries on.
+            parent_state = (self._current_graph, self._current_strategy, self._stats)
+            try:
+                # Create sub-question from target content
+                sub_result = await self.cook(
+                    target.content,
+                    sub_strategy,
+                    {**context, "depth": target.depth + 1},
+                )
+            finally:
+                self._current_graph, self._current_strategy, self._stats = parent_state
 
             if sub_result.success and sub_result.final_synthesis:
                 # Link synthesis back to target
@@ -464,6 +471,10 @@ class MasterChef:
         # Filter by status
         if phase.target_status:
             candidates = [n for n in candidates if n.status in phase.target_status]
+
+        # Filter by depth
+        if phase.target_depth is not None:
+            candidates = [n for n in candidates if n.depth == phase.target_depth]
 
         # Apply batch size
         if phase.batch_size:

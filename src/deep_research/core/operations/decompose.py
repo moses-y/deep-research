@@ -19,13 +19,13 @@ from .base import get_model_from_context, get_provider_from_context
 
 
 class DecomposeOperation(BaseOperation):
-    """Breaks a question into sub-questions through exploration."""
+    """Breaks a question, sub-question or perspective into sub-questions through exploration."""
 
     @property
     def spec(self) -> OperationSpec:
         return OperationSpec(
             operation_type=OperationType.DECOMPOSE,
-            input_types=[NodeType.QUESTION, NodeType.SUB_QUESTION],
+            input_types=[NodeType.QUESTION, NodeType.SUB_QUESTION, NodeType.PERSPECTIVE],
             output_types=[NodeType.SUB_QUESTION],
             required_status=[
                 EpistemicStatus.UNKNOWN,

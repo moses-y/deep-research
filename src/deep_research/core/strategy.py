@@ -148,6 +148,7 @@ class Phase:
     # What nodes to target
     target_types: list[NodeType] = field(default_factory=list)
     target_status: list[EpistemicStatus] = field(default_factory=list)
+    target_depth: int | None = None  # Only nodes at exactly this depth (None = any depth)
 
     # What operations to apply
     operations: list[OperationType] = field(default_factory=list)
@@ -242,6 +243,7 @@ class Strategy:
                     "type": p.phase_type.value,
                     "target_types": [t.value for t in p.target_types],
                     "target_status": [s.value for s in p.target_status],
+                    "target_depth": p.target_depth,
                     "operations": [o.value for o in p.operations],
                     "parallel": p.parallel,
                     "max_concurrent": p.max_concurrent,
@@ -286,6 +288,7 @@ class Strategy:
                 phase_type=PhaseType(p["type"]),
                 target_types=[NodeType(t) for t in p.get("target_types", [])],
                 target_status=[EpistemicStatus(s) for s in p.get("target_status", [])],
+                target_depth=p.get("target_depth"),
                 operations=[OperationType(o) for o in p.get("operations", [])],
                 parallel=p.get("parallel", False),
                 max_concurrent=p.get("max_concurrent", 10),
@@ -397,8 +400,15 @@ def recursive_research_strategy(
     Flow: [Perspectives] → Decompose → Answer → [Ground] → [Blind Spots] → Synthesize
 
     Args:
-        max_depth: Maximum recursion depth (default: 2)
-        parallel: Run leaf answers in parallel (default: True)
+        max_depth: Number of levels in the question tree, counting the root as
+            level 1 (default: 2), the same meaning as the CLI's ``-d``. Every
+            level above the last is decomposed and the last level is answered
+            directly, so 1 answers the root with no decomposition (and no
+            synthesis), 2 decomposes the root once, and each further level
+            decomposes the sub-questions again and synthesizes bottom-up.
+            Must be at least 1.
+        parallel: Run the per-level decompose, answer and synthesize phases
+            below the root in parallel (default: True)
         web_grounding: Verify answers with web search before synthesis (default: False)
         perspectives: Expand question into multiple perspectives first (default: False)
         blind_spots: Detect blind spots before final synthesis (default: False)
@@ -408,7 +418,18 @@ def recursive_research_strategy(
             metadata.name, so two variants sharing a name silently overwrite
             each other and become unreachable.
         description: Human-readable description stored in the metadata.
+
+    Raises:
+        ValueError: If max_depth is less than 1.
     """
+    if max_depth < 1:
+        raise ValueError(f"max_depth must be at least 1, got {max_depth}")
+
+    # The root question is at depth 0. Nodes at leaf_depth are answered directly;
+    # every level above them is decomposed, and the levels between the root and the
+    # leaves are synthesized from the bottom up.
+    leaf_depth = max_depth - 1
+
     phases = []
 
     # Optional: Expand into perspectives first
@@ -434,9 +455,9 @@ def recursive_research_strategy(
             ]
         )
 
-    # Core research phases
-    phases.extend(
-        [
+    # Core research phases: decompose every level above the leaves, then answer the leaves
+    if leaf_depth > 0:
+        phases.append(
             Phase(
                 name="decompose",
                 phase_type=PhaseType.DECOMPOSE,
@@ -446,18 +467,34 @@ def recursive_research_strategy(
                 target_status=[EpistemicStatus.UNKNOWN, EpistemicStatus.PROPOSED],
                 operations=[OperationType.DECOMPOSE],
                 description="Break questions into sub-questions",
-            ),
+            )
+        )
+    for level in range(1, leaf_depth):
+        phases.append(
             Phase(
-                name="answer_leaves",
-                phase_type=PhaseType.ANSWER,
+                name=f"decompose_{level}",
+                phase_type=PhaseType.DECOMPOSE,
                 target_types=[NodeType.SUB_QUESTION],
-                target_status=[EpistemicStatus.UNKNOWN, EpistemicStatus.EXPLORED],
-                operations=[OperationType.ANSWER],
+                target_status=[EpistemicStatus.UNKNOWN, EpistemicStatus.PROPOSED],
+                target_depth=level,
+                operations=[OperationType.DECOMPOSE],
                 parallel=parallel,
-                model_hint=researcher_model,  # Use researcher model if specified
-                description="Answer leaf questions directly",
-            ),
-        ]
+                description=f"Break level-{level} sub-questions into sub-questions",
+            )
+        )
+    phases.append(
+        Phase(
+            name="answer_leaves",
+            phase_type=PhaseType.ANSWER,
+            # With max_depth=1 the root question is itself the leaf
+            target_types=[NodeType.SUB_QUESTION if leaf_depth > 0 else NodeType.QUESTION],
+            target_status=[EpistemicStatus.UNKNOWN, EpistemicStatus.EXPLORED],
+            target_depth=leaf_depth,
+            operations=[OperationType.ANSWER],
+            parallel=parallel,
+            model_hint=researcher_model,  # Use researcher model if specified
+            description="Answer leaf questions directly",
+        )
     )
 
     # Optional: Web grounding
@@ -475,31 +512,50 @@ def recursive_research_strategy(
             )
         )
 
-    # Optional: Blind spot detection
+    # Optional: Blind spot detection. DETECT analyses the perspectives and findings under a
+    # question, so it runs on the root QUESTION (EXPLORED after decomposition), not on the
+    # individual answers, which it refuses.
     if blind_spots:
         phases.append(
             Phase(
                 name="detect_blind_spots",
                 phase_type=PhaseType.DETECT,
-                target_types=[NodeType.ANSWER, NodeType.SYNTHESIS],
-                target_status=[EpistemicStatus.SYNTHESIZED, EpistemicStatus.GROUNDED],
+                target_types=[NodeType.QUESTION],
+                target_status=[EpistemicStatus.EXPLORED],
                 operations=[OperationType.DETECT],
                 description="Discover blind spots and gaps",
             )
         )
 
-    # Synthesis phase - targets the root QUESTION (which has EXPLORED status after decomposition)
-    # The synthesize operation gathers child answers and creates a synthesis
-    phases.append(
-        Phase(
-            name="synthesize",
-            phase_type=PhaseType.SYNTHESIZE,
-            target_types=[NodeType.QUESTION],
-            target_status=[EpistemicStatus.EXPLORED],
-            operations=[OperationType.SYNTHESIZE],
-            description="Combine answers into coherent synthesis",
+    # Synthesis phases, deepest decomposed level first so that each level finds the
+    # syntheses of the level below it. The synthesize operation gathers child answers
+    # (or child syntheses) and creates a synthesis.
+    for level in range(leaf_depth - 1, 0, -1):
+        phases.append(
+            Phase(
+                name=f"synthesize_{level}",
+                phase_type=PhaseType.SYNTHESIZE,
+                target_types=[NodeType.SUB_QUESTION],
+                target_status=[EpistemicStatus.EXPLORED],
+                target_depth=level,
+                operations=[OperationType.SYNTHESIZE],
+                parallel=parallel,
+                description=f"Combine the answers under level-{level} sub-questions",
+            )
         )
-    )
+    # The root QUESTION has EXPLORED status after decomposition. With max_depth=1 it was
+    # answered rather than decomposed, so there is nothing to synthesize.
+    if leaf_depth > 0:
+        phases.append(
+            Phase(
+                name="synthesize",
+                phase_type=PhaseType.SYNTHESIZE,
+                target_types=[NodeType.QUESTION],
+                target_status=[EpistemicStatus.EXPLORED],
+                operations=[OperationType.SYNTHESIZE],
+                description="Combine answers into coherent synthesis",
+            )
+        )
 
     # Build tags
     tags = ["recursive", "decomposition", "synthesis"]
@@ -510,10 +566,11 @@ def recursive_research_strategy(
     if blind_spots:
         tags.append("blind-spots")
 
-    # Build goals - ALL_SYNTHESIZED is the primary completion goal
-    # DEPTH_REACHED is used to limit decomposition, not as termination
+    # Build goals - ALL_SYNTHESIZED is the primary completion goal. With max_depth=1
+    # there is no synthesis, so the run is done once the root has been answered.
+    # The depth limit itself is built into the phases above, not checked as a goal.
     goals = [
-        Goal(GoalType.ALL_SYNTHESIZED),
+        Goal(GoalType.ALL_SYNTHESIZED if leaf_depth > 0 else GoalType.ALL_ANSWERED),
     ]
     if blind_spots:
         goals.append(Goal(GoalType.BLIND_SPOTS_FOUND))

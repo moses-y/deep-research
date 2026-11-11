@@ -8,9 +8,9 @@ Implementation recipes for the deep-research tool.
 |--------|--------|------------|----------|
 | **Recursive Research** | v1 implemented, v2-v3 design | Extract answers | Mining |
 | **The Emergence Engine** | Design only | Cultivate emergence through collision | Gardening |
-| **The Inverse Engine** | Design only | Derive success from failure | Sculpture |
+| **The Inverse Engine** | Written (`src/deep_research/recipes/inverse.py`), not wired to the CLI | Derive success from failure | Sculpture |
 | **The Adversarial Engine** | Design only | Truth from combat | Courtroom |
-| **The Socratic Engine** | Design only | Transform questions | Alchemy |
+| **The Socratic Engine** | Implemented (`deep-research socratic`) | Transform questions | Alchemy |
 
 ## Files
 
