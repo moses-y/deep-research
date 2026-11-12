@@ -120,7 +120,8 @@ List each angle as a focused research question on its own line starting with "Q:
 
 Be thorough. Do not stop at obvious angles.'
 
-SYNTHESIZE_PROMPT='Synthesize the following research into a coherent, insightful answer.
+# Same wording as SYNTHESIZE_PROMPT in src/deep_research/providers/base.py (measured: docs/MEASURED.md).
+SYNTHESIZE_PROMPT='Answer the original question using the research findings below.
 
 Original question: {QUESTION}
 
@@ -128,7 +129,7 @@ Research findings:
 
 {RESULTS}
 
-Draw connections between findings, highlight tensions, and provide a nuanced perspective.'
+Answer the question directly and thoroughly. Keep every specific finding that bears on the question: named things, numbers, steps, examples and caveats. Group related findings instead of dropping them, and state each point once. Where findings disagree, say so. Do not replace specifics with a general summary.'
 
 LEAF_PROMPT='You are a focused research agent. Answer the question directly and thoroughly.
 Be comprehensive but concise. Provide concrete examples where helpful.'

@@ -39,6 +39,15 @@ A single run of the first command in this README decomposed one question into
 **69 sub-questions and began spawning 69 child agents.** At the default depth of
 5, a modest 8-way branch is ~4,000 leaf calls.
 
+That run used the earlier explore prompt, which told every node to list all
+angles. The default prompt now lets the node decide: it answers an atomic
+question itself and lists only the angles that need separate work. On eight open
+questions tried once each with `opus` exploring, the median fell from 27
+sub-questions to 10.5, and three of the eight were answered directly. "What is
+the capital of Australia?" got 12 sub-questions from the earlier prompt and a
+direct answer from this one. The count is still uncapped. `--thorough` brings the
+earlier prompt back.
+
 It happens with **no API key set**, which is the part that surprises people: the
 default provider shells out to your locally installed `claude` binary, so it
 inherits whatever session that binary is already logged into. Nothing prompts
@@ -52,6 +61,17 @@ deep-research research -d 1 -m haiku -r haiku "A small question"
 
 Interrupting a run is safe but *unrecoverable* — there is no resume. See
 [Checkpoints and resume](#checkpoints-and-resume).
+
+---
+
+## What has been measured
+
+Read [docs/MEASURED.md](docs/MEASURED.md) before you rely on the tree. In short:
+on questions a model can answer from memory, one plain call covered more of an
+expert checklist than the tree's final answer, and the tree's leaves found about
+as much as the same number of plain calls on the undivided question. Two
+defaults changed because of those runs (the explore prompt and the synthesis
+prompt). The page also reports what a search tool changes.
 
 ---
 
@@ -281,6 +301,8 @@ deep-research research [OPTIONS] "Your question"
 | `-d, --depth` | `0` | Max recursion depth. **`0` means "use the configured default", currently 5 — it does not mean unlimited.** Hard ceiling 20 |
 | `-p, --parallel` | `10` | Max *concurrent* agents (not a total cap) |
 | `-o, --output` | auto | Output directory |
+| `--thorough` | off | Every node lists all angles (the earlier default, more than twice the sub-questions). Without it a node answers an atomic question itself and lists only angles that need separate work |
+| `--synthesize` | off | Each exploring node writes one answer from its children's findings (one more call per exploring node). Without it the report is the exploration plus every child's answer in full |
 | `-w, --web` | off | **Accepted but not yet wired on this command** — it has no effect. The CLI prints a note if you pass it. Web grounding lives in the `grounded_research` strategy (Python API) and in the bash script |
 | `-v, --verbose` | off | **Accepted but not yet wired on this command** — it has no effect |
 | `--perspectives` | — | Perspective models, comma-separated |
@@ -352,9 +374,13 @@ reports/YYYY-MM-DD-your-question-slug/
 `deep-research perspectives` adds `PERSPECTIVES.md`; `deep-research socratic`
 writes `SOCRATIC.md`.
 
-There is deliberately no separate `SYNTHESIS.md` on the Python path — the
-root agent's file under `agents/` is the synthesized report. `SYNTHESIS.md` is
-written by the legacy `deep-research.sh` only.
+The Python CLI makes **no synthesis call** unless you pass `--synthesize`: the
+root agent's file under `agents/` holds the exploration and every child's answer
+in full, and that is the report. With `--synthesize` each exploring node also
+writes one answer from its children's findings (one more call per exploring
+node), the root's answer is the report, and the children's answers stay in the
+same file. There is no separate `SYNTHESIS.md` on the Python path; it is written
+by the legacy `deep-research.sh` only.
 
 `graph.json` is written by the **Python API** path (`MasterChef`) when an
 `output_dir` is given. The CLI does not produce it.

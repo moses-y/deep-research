@@ -367,6 +367,7 @@ class Orchestrator:
             provider.explore,
             config.question,
             config.model.model,
+            thorough=self.config.thorough_explore,
         )
         state.exploration_output = exploration_output
 
@@ -377,13 +378,15 @@ class Orchestrator:
         self._logger.agent_found_questions(config.agent_id, len(questions))
 
         if not questions:
-            # No sub-questions - treat as leaf
-            state.response = exploration_output
+            # The node answered instead of listing sub-questions.
+            if not result.direct_answer:
+                raise EmptyResponseError(provider.name, config.model.model, config.question)
+            state.response = result.direct_answer
             state.status = AgentStatus.COMPLETE
             state.end_time = datetime.now()
             self._write_agent_file(state)
             self._logger.agent_complete(config.agent_id, state.duration_ms)
-            return exploration_output
+            return state.response
 
         state.child_questions = questions
         state.status = AgentStatus.WAITING_FOR_CHILDREN
@@ -463,16 +466,27 @@ class Orchestrator:
 {results_str}
 """
 
-        # Only synthesize if explicitly requested (future: --summarize flag)
-        # For now, skip the extra synthesis call - the exploration already contains
-        # the orchestrator's reasoning and the children contain the answers
-        state.synthesis = None  # No separate synthesis
+        # Without --synthesize the node returns everything it gathered: the exploration and
+        # every child's answer. With it, the node writes one answer from the children's findings.
+        answer = full_output
+        if self.config.synthesize:
+            synthesis = await self._retry_with_backoff(
+                f"synthesize ({config.model})",
+                provider.synthesize,
+                config.question,
+                results_str,
+                config.model.model,
+            )
+            if not synthesis.strip():
+                raise EmptyResponseError(provider.name, config.model.model, config.question)
+            state.synthesis = synthesis.strip()
+            answer = state.synthesis
         state.status = AgentStatus.COMPLETE
         state.end_time = datetime.now()
         self._write_agent_file(state)
 
         self._logger.agent_complete(config.agent_id, state.duration_ms)
-        return full_output
+        return answer
 
     async def process_question(
         self,

@@ -43,6 +43,9 @@ class ProviderType(str, Enum):
 # Pydantic Models (LLM outputs, validation, serialization)
 # =============================================================================
 
+# The explore prompt asks a node that answers directly to start its reply with this.
+DIRECT_ANSWER_MARKER = "ANSWER:"
+
 
 class ResearchQuestion(BaseModel):
     """A research question extracted from exploration."""
@@ -56,16 +59,21 @@ class ExplorationResult(BaseModel):
 
     raw_output: str
     questions: list[ResearchQuestion] = Field(default_factory=list)
+    # Set when the node answered instead of listing sub-questions.
+    direct_answer: str | None = None
 
     @classmethod
     def from_output(cls, output: str) -> "ExplorationResult":
-        """Parse Q: lines from raw output."""
+        """Parse Q: lines from raw output; with none, the output is the node's own answer."""
         questions = []
         for line in output.strip().split("\n"):
             line = line.strip()
             if line.startswith("Q: "):
                 questions.append(ResearchQuestion(question=line[3:].strip()))
-        return cls(raw_output=output, questions=questions)
+        direct_answer = None
+        if not questions:
+            direct_answer = output.strip().removeprefix(DIRECT_ANSWER_MARKER).strip()
+        return cls(raw_output=output, questions=questions, direct_answer=direct_answer)
 
 
 class SynthesisResult(BaseModel):
@@ -151,6 +159,12 @@ class ResearchConfig:
     max_depth: int = 0  # 0 = unlimited
     max_parallel: int = 10
     web_search: bool = False
+    # True: every node lists all angles (the earlier default). False: the node decides
+    # whether to answer directly or list only the angles that need separate work.
+    thorough_explore: bool = False
+    # True: an exploring node writes one answer from its children's findings (one more call per
+    # exploring node) and returns that. False: it returns the exploration and every child's answer.
+    synthesize: bool = False
     output_dir: Path | None = None
     # Perspective expansion options
     perspective_models: list[ModelSpec] = field(default_factory=list)

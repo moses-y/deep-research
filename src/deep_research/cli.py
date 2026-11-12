@@ -169,6 +169,18 @@ def research(
         "--output",
         help="Output directory (default: reports/YYYY-MM-DD-slug)",
     ),
+    thorough: bool = typer.Option(
+        False,
+        "--thorough",
+        help="Every node lists all angles (the earlier default; more than twice the sub-questions). "
+        "Without it a node answers an atomic question itself and lists only angles that need separate work.",
+    ),
+    synthesize: bool = typer.Option(
+        False,
+        "--synthesize",
+        help="Each exploring node writes one answer from its children's findings (one more call per "
+        "exploring node). Without it the report is the exploration plus every child's answer in full.",
+    ),
     verbose: bool = typer.Option(
         False,
         "-v",
@@ -228,9 +240,7 @@ def research(
         # Validate question first
         question = validate_question(question)
 
-        # Validate depth and parallel
         validate_depth(depth)
-        validate_parallel(parallel)
 
         # Parse models (use settings defaults if not specified)
         orchestrator = parse_model(model or settings.default_orchestrator)
@@ -247,6 +257,8 @@ def research(
         # NOT mean unlimited on this command.
         effective_depth = depth if depth != 0 else settings.max_depth
         effective_parallel = parallel if parallel is not None else settings.max_parallel
+        # Checked after the default is applied: -p is optional.
+        validate_parallel(effective_parallel)
 
         # Be honest about flags this command accepts but does not yet act on,
         # rather than silently ignoring them.
@@ -272,6 +284,8 @@ def research(
             max_depth=effective_depth,
             max_parallel=effective_parallel,
             web_search=web,
+            thorough_explore=thorough,
+            synthesize=synthesize,
             output_dir=output_dir,
             # Perspective expansion options
             perspective_models=perspective_models,

@@ -45,10 +45,13 @@ class Provider(ABC):
         """
         ...
 
-    async def explore(self, question: str, model: str) -> str:
-        """Explore a question for research angles."""
+    async def explore(self, question: str, model: str, thorough: bool = False) -> str:
+        """Explore a question: answer it directly or list the angles that need separate work.
+
+        thorough=True uses the earlier prompt, which always lists every angle.
+        """
         options = ProviderOptions(
-            system_prompt=EXPLORE_PROMPT,
+            system_prompt=EXPLORE_PROMPT_THOROUGH if thorough else EXPLORE_PROMPT,
         )
         return await self.generate(question, model, options)
 
@@ -64,9 +67,13 @@ class Provider(ABC):
         question: str,
         results: str,
         model: str,
+        connect: bool = False,
     ) -> str:
-        """Synthesize research results into coherent answer."""
-        prompt = SYNTHESIZE_PROMPT.format(
+        """Write one answer to the question from the research results.
+
+        connect=True uses the earlier prompt (connections, tensions, a nuanced perspective).
+        """
+        prompt = (SYNTHESIZE_PROMPT_CONNECT if connect else SYNTHESIZE_PROMPT).format(
             QUESTION=question,
             RESULTS=results,
         )
@@ -98,7 +105,21 @@ class Provider(ABC):
 # Prompts (same as bash version)
 # =============================================================================
 
+# The node decides: answer an atomic question itself, or list only the angles that need
+# separate work. A reply with no "Q: " line is taken as the answer (models.ExplorationResult).
 EXPLORE_PROMPT = """You are a research agent. Given a question, identify all important angles worth exploring.
+
+Think deeply:
+- What would experts consider?
+- What is non-obvious or often missed?
+- What tensions or tradeoffs exist?
+
+Decide first what this question needs:
+- If it is atomic and you can answer it fully yourself, answer it directly and start your reply with "ANSWER:".
+- If it has several angles that need separate exploration, list each angle as a focused research question on its own line starting with "Q: ". List only angles that need separate work."""
+
+# The earlier default: always list every angle. More than twice as many sub-questions.
+EXPLORE_PROMPT_THOROUGH = """You are a research agent. Given a question, identify all important angles worth exploring.
 
 Think deeply:
 - What would experts consider?
@@ -112,7 +133,20 @@ Be thorough. Do not stop at obvious angles."""
 LEAF_PROMPT = """You are a focused research agent. Answer the question directly and thoroughly.
 Be comprehensive but concise. Provide concrete examples where helpful."""
 
-SYNTHESIZE_PROMPT = """Synthesize the following research into a coherent, insightful answer.
+# The default asks for the answer and for the findings to survive into it. Measured on seven
+# questions against published expert checklists (docs/MEASURED.md).
+SYNTHESIZE_PROMPT = """Answer the original question using the research findings below.
+
+Original question: {QUESTION}
+
+Research findings:
+
+{RESULTS}
+
+Answer the question directly and thoroughly. Keep every specific finding that bears on the question: named things, numbers, steps, examples and caveats. Group related findings instead of dropping them, and state each point once. Where findings disagree, say so. Do not replace specifics with a general summary."""
+
+# The earlier default: an essay about the findings. Shorter, and it drops specifics.
+SYNTHESIZE_PROMPT_CONNECT = """Synthesize the following research into a coherent, insightful answer.
 
 Original question: {QUESTION}
 
